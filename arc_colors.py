@@ -39,7 +39,6 @@ class BulbController:
       self.last_color = color
 
   def make_request(self, color):
-    print('make request')
     url = 'https://developer-api.govee.com/v1/devices/control'
     headers = { 'Govee-API-Key': os.getenv('GOVEE_API_KEY') }
     body = {
