@@ -16,6 +16,7 @@ def read_file(file_path):
   except Exception as e:
       print(f'Error reading file: {e}')
 
+# Handles reading a file every time it gets changed
 class FileChangeHandler(FileSystemEventHandler):
     def __init__(self, file_path, on_read):
         self.file_path = file_path
@@ -29,6 +30,7 @@ class FileChangeHandler(FileSystemEventHandler):
     def read_file(self):
       return self.on_read(read_file(self.file_path))
 
+# Handles updating the bulb color via and HTTP request
 class BulbController:
   def __init__(self):
     self.last_color = None
@@ -58,6 +60,7 @@ class BulbController:
 
 controller = BulbController()
 
+# Continuously watches a file and calls on_read when the file updates
 def watch_file(file_path, on_read):
     observer = Observer()
     event_handler = FileChangeHandler(file_path, on_read)
@@ -74,23 +77,21 @@ def watch_file(file_path, on_read):
         observer.stop()
     observer.join()
 
-RESET = '\033[0m'
-def get_color_escape(r, g, b, background=False):
-    return '\033[{};2;{};{};{}m'.format(48 if background else 38, r, g, b)
-
 def update_color(content):
   color = find_active_color(content)
   controller.change_bulb_color(color)
 
 def find_active_color(content):
   active_tab = get_active_tab(content)
-  sidebar_content = read_file('/Users/evansmith/Library/Application Support/Arc/StorableSidebar.json')
+  sidebar_content = read_file(f'/Users/{os.getenv('HOME_DIR_NAME')}/Library/Application Support/Arc/StorableSidebar.json')
   return get_color(sidebar_content, active_tab)
 
+# Gets the id for the current active tab
 def get_active_tab(content):
   obj = json.loads(content)
   return obj['lastFocusedSpaceID']
 
+# Gets the color of the active tab from the arc application file
 def get_color(content, active_tab):
   obj = json.loads(content)
   spaces = obj['sidebar']['containers'][1]['spaces']
@@ -108,16 +109,20 @@ def get_color(content, active_tab):
   extended_srgb = [color['red'], color['green'], color['blue']]
   srgb = np.clip(extended_srgb, 0, 1)
   srgb = np.round(srgb * 255).astype(np.int32)
-  print_color(srgb[0], srgb[1], srgb[2])
+  print_color(srgb)
 
   return srgb
 
-def print_color(r, g, b):
-  print(get_color_escape(r, g, b, True)
+# Used for printing out the color in the terminal
+def print_color(rgb):
+  print(get_color_escape(rgb, True)
       + ' ' * 20
       + RESET)
 
+RESET = '\033[0m'
+def get_color_escape(rgb, background=True):
+    return '\033[{};2;{};{};{}m'.format(48 if background else 38, rgb[0], rgb[1], rgb[2])
+
 if __name__ == '__main__':
-    # file_to_watch = os.path.abspath('./hello.txt')
-    file_to_watch = '/Users/evansmith/Library/Application Support/Arc/StorableWindows.json'
+    file_to_watch = f'/Users/{os.getenv('HOME_DIR_NAME')}/Library/Application Support/Arc/StorableWindows.json'
     watch_file(file_to_watch, update_color)
